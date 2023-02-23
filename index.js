@@ -3,6 +3,7 @@ import mongoose from 'mongoose'
 import dotenv from 'dotenv'
 import cors from 'cors'
 import authRoute from './routes/auth.js'
+import userRoute from './routes/users.js'
 import fileUpload from 'express-fileupload'
 
 
@@ -34,6 +35,7 @@ app.use(express.static('uploads'))
 
 // Routes
 app.use('/api/auth', authRoute)
+app.use('/api/users', userRoute)
 
 //объявляем асинхронную функцию start, которая будет запускать приложение express
 async function start() {
