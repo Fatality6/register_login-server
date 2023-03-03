@@ -1,5 +1,5 @@
 import { Router } from "express"
-import { register, login, getMe } from "../controllers/auth.js"
+import { register, login, getMe, updateUser } from "../controllers/auth.js"
 import { checkAuth } from "../utils/chechAuth.js"
 
 //создаём endpointы и при выполнении на них запроса вызываем нужный котроллер или midlware
@@ -14,5 +14,8 @@ router.post('/login', login)
 
 //Get me
 router.get('/me',checkAuth, getMe)
+
+//update user
+router.put('/update',checkAuth, updateUser)
 
 export default router
