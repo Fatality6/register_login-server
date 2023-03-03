@@ -10,7 +10,7 @@ import sharp from 'sharp'
 export const register = async (req, res) => {
   try {
     // получаем данные от пользователя
-    const { username, password, email, birthdate, gender, image } = req.body
+    const { username, password, email, birthdate, gender } = req.body
     //ищем совпадения по username, email в БД
     const isUsed = await User.findOne({ username })
     const isEmail = await User.findOne({ email })
@@ -161,7 +161,7 @@ export const login = async (req, res) => {
 
     //если совпадения по паролю нет, то возвращаем ответ 'Неверный пароль'
     if (!isPasswordCorrect) {
-      res.json({ message: 'Неверный пароль' })
+      return res.json({ message: 'Неверный пароль' })
     }
 
     //если пароль верный, то создаём токен используя jsonwebtoken шифруя id из БД и используя ключ из .env
@@ -207,5 +207,85 @@ export const getMe = async (req, res) => {
     })
   } catch (error) {
     res.json({ message: 'Нет доступа.' })
+  }
+}
+
+//update user
+export const updateUser = async (req, res) => {
+  try {
+    //получаем из req.body username, password
+    const { username, password } = req.body
+
+    //находим пост по id
+    const user = await User.findById(req.userId)
+
+    //изменяем username и password user
+    if (username) {
+      user.username = username
+    }
+    if (password) {
+      //хешируем пароль где salt это сложность хэша
+      const salt = bcrypt.genSaltSync(10)
+
+      //создаём хэш из пароля
+      const hash = bcrypt.hashSync(password, salt)
+      //сохраняем новый хэш парооля
+      user.password = hash
+    }
+
+    //если в запросе есть фото
+    if (req.files) {
+      // формируем имя файла из даты и имени
+      let fileName = Date.now().toString() + req.files.image.name;
+      //получение абсолютного пути
+      const __dirname = dirname(fileURLToPath(import.meta.url));
+      // получаем путь к данному файлу
+      const inputFile = path.join(__dirname, '..', 'uploads', fileName);
+      const outputFile = path.join(__dirname, '..', 'uploads', 'resized_' + fileName);
+
+      // перемещаем файл в папку uploads
+      req.files.image.mv(inputFile, (err) => {
+        if (err) {
+          console.error(err);
+        } else {
+          // изменяем размер изображения до 200x200 и сохраняем его в новый файл
+          sharp(inputFile)
+            .resize(200, 200)
+            .toFile(outputFile, (err, info) => {
+              if (err) {
+                console.error(err);
+              } else {
+
+                //удаляем исходный файл
+                fs.unlink(inputFile, (err) => {
+                  if (err) {
+                    console.error(err);
+                  }
+                })
+              }
+            })
+        }
+      })
+
+      //если у user до этого уже была фотография, то удаляем её
+      if (user.userPhoto) {
+        const __dirname = dirname(fileURLToPath(import.meta.url))
+        const imagePath = path.join(__dirname, '..', 'uploads', user.userPhoto)
+        fs.unlink(imagePath, err => {
+          if (err) console.log(err)
+        })
+      }
+
+      //изменяем адрес картинки user
+      user.userPhoto = 'resized_' + fileName || ''
+    }
+
+    // сохраняем изменения в БД
+    await user.save()
+
+    //возвращаем пост
+    res.json({ user, message: 'Профиль отредактирован' })
+  } catch (error) {
+    res.json({ message: 'Что-то пошло не так' })
   }
 }
